@@ -10,8 +10,8 @@ interface Props {
 }
 
 const SORTS: { value: SortKey; label: string }[] = [
-  { value: "price-asc", label: "Precio ↑" },
-  { value: "price-desc", label: "Precio ↓" },
+  { value: "price-asc", label: "Precio: menor a mayor" },
+  { value: "price-desc", label: "Precio: mayor a menor" },
   { value: "drop", label: "Mayor bajada" },
   { value: "recent", label: "Más reciente" },
 ];
