@@ -1,0 +1,11 @@
+.empty {
+  text-align: center;
+  padding: 70px 20px;
+  color: var(--muted);
+}
+.empty svg { margin: 0 auto; display: block; }
+.empty h3 {
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--text);
+  margin: 14px 0 6px;
+}

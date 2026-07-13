@@ -1,0 +1,32 @@
+.card {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.left { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.right { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+
+.line {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 37%, var(--surface) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+.badge { width: 90px; height: 20px; }
+.title { width: 80%; height: 16px; }
+.sub { width: 55%; height: 12px; }
+.spark { width: 70px; height: 22px; }
+.price { width: 70px; height: 22px; }
+
+@keyframes shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line { animation: none; }
+}

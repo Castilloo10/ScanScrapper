@@ -1,0 +1,82 @@
+name: deploy
+
+# Rastrea, genera el snapshot y publica el sitio en GitHub Pages.
+# 100% gratis: en repos PÚBLICOS los minutos de Actions son ilimitados y
+# GitHub Pages es gratis 24/7. No hay servidor encendido ni base de datos de pago.
+on:
+  schedule:
+    - cron: "0 */3 * * *"   # cada 3 horas (educado con las tiendas)
+  workflow_dispatch: {}       # botón para lanzarlo a mano
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# No solapar despliegues; no cancelar uno en curso.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # 1) Restaura la BD (histórico de precios) de ejecuciones anteriores.
+      #    Clave única por run + restore-keys → siempre restaura la más reciente.
+      - name: Restaurar BD
+        uses: actions/cache/restore@v4
+        with:
+          path: backend/radar.sqlite
+          key: radar-db-${{ github.run_id }}
+          restore-keys: |
+            radar-db-
+
+      # 2) Rastrea las tiendas y escribe frontend/public/products.json.
+      - name: Instalar backend
+        run: npm ci
+        working-directory: backend
+      - name: Rastrear + snapshot
+        run: npm run snapshot
+        working-directory: backend
+        env:
+          EXPORT_PATH: ${{ github.workspace }}/frontend/public/products.json
+
+      # 3) Guarda la BD actualizada para la próxima ejecución (acumula histórico).
+      - name: Guardar BD
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: backend/radar.sqlite
+          key: radar-db-${{ github.run_id }}
+
+      # 4) Construye el frontend (el bundle incluye products.json).
+      #    BASE_PATH = /<nombre-repo>/ para GitHub Pages de proyecto.
+      - name: Instalar frontend
+        run: npm ci
+        working-directory: frontend
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+
+      # 5) Publica en GitHub Pages.
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+      - name: Desplegar
+        id: deploy
+        uses: actions/deploy-pages@v4

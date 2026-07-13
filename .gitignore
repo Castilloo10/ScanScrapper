@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+*.sqlite
+*.sqlite-*
+bun.lockb
+*.local
+.DS_Store
+
+# products.json SÍ se versiona como "semilla": así la web tiene datos reales
+# desde el primer despliegue aunque el rastreo en CI falle. GitHub Actions lo
+# regenera en cada run (y no lo sobrescribe con vacío si el rastreo se bloquea).
+
+# package-lock.json SÍ se versiona (npm ci en CI lo necesita).

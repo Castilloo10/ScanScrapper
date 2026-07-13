@@ -1,0 +1,83 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(14, 18, 32, .82);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+
+.bar {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 16px 22px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: center; gap: 11px; flex-shrink: 0; }
+.mark { width: 34px; height: 34px; display: grid; place-items: center; position: relative; }
+.ping {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--cyan);
+  border-radius: 50%;
+  opacity: 0;
+  animation: ping 2.6s ease-out infinite;
+}
+@keyframes ping {
+  0% { transform: scale(.35); opacity: .9; }
+  70% { transform: scale(1); opacity: 0; }
+  100% { opacity: 0; }
+}
+.name {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: .14em;
+}
+.name span { color: var(--gold); }
+.sub {
+  font-size: 11px;
+  color: var(--muted-2);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-top: -2px;
+}
+
+.searchwrap { flex: 1; min-width: 240px; position: relative; }
+.searchwrap svg { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.searchwrap input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: var(--text);
+  font-size: 15px;
+  padding: 12px 14px 12px 44px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.searchwrap input::placeholder { color: var(--muted-2); }
+.searchwrap input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(61, 214, 196, .16); }
+
+.toggle {
+  display: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 11px;
+  padding: 12px 15px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 860px) {
+  .toggle { display: inline-flex; }
+  .searchwrap { order: 3; flex-basis: 100%; }
+}

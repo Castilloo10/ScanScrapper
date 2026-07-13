@@ -1,0 +1,95 @@
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  transition: border-color .15s, transform .15s;
+}
+.card:hover { border-color: var(--surface-2); transform: translateY(-1px); }
+.best { border-color: var(--gold-dim); box-shadow: inset 0 0 0 1px rgba(245, 178, 61, .25); }
+
+.info { min-width: 0; }
+.toprow { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+
+.badge {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.cond {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+.nuevo { background: rgba(61, 214, 196, .13); color: var(--cyan); }
+.usado { background: rgba(245, 178, 61, .13); color: var(--gold); }
+
+.bestTag {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.title {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.brandLine { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+.stockYes { color: var(--good); }
+.stockNo { color: var(--bad); }
+
+.right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+
+.spark { display: flex; align-items: center; gap: 7px; }
+.delta { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 700; }
+.down { color: var(--good); }
+.up { color: var(--bad); }
+.flat { color: var(--muted-2); }
+
+.price {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+}
+.best .price { color: var(--gold); }
+
+.goto {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--cyan);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  transition: all .12s;
+}
+.goto:hover { border-color: var(--cyan); background: rgba(61, 214, 196, .08); }
+
+@media (max-width: 860px) {
+  .card { grid-template-columns: 1fr; gap: 14px; }
+  .right { text-align: left; align-items: flex-start; flex-direction: row; justify-content: space-between; width: 100%; }
+}

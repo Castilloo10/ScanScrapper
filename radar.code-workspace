@@ -1,0 +1,28 @@
+{
+  "folders": [
+    {
+      "name": "🛰  frontend",
+      "path": "frontend"
+    },
+    {
+      "name": "⚙  backend",
+      "path": "backend"
+    },
+    {
+      "path": "../BTAL APP/btal-v2"
+    }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "files.eol": "\n",
+    "typescript.tsdk": "frontend/node_modules/typescript/lib"
+  },
+  "extensions": {
+    "recommendations": [
+      "oven.bun-vscode",
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint"
+    ]
+  }
+}

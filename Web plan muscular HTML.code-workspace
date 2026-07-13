@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../Web plan muscular HTML"
+		},
+		{
+			"path": "../BTAL APP"
+		}
+	],
+	"settings": {
+		"powershell.cwd": "Web plan muscular HTML"
+	}
+}
