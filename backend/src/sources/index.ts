@@ -1,5 +1,6 @@
 import type { Listing } from "../types.ts";
 import { scrapeStore } from "./engine.ts";
+import { scrapeViaSitemap } from "./sitemap.ts";
 import { STORE_CONFIGS } from "./stores.ts";
 import * as vsgamers from "./vsgamers.ts";
 import * as wallapop from "./wallapop.ts";
@@ -16,7 +17,8 @@ export interface Source {
  */
 const configured: Source[] = STORE_CONFIGS.map((cfg) => ({
   name: cfg.name,
-  search: (term: string) => scrapeStore(cfg, term),
+  search: (term: string) =>
+    cfg.sitemapUrl ? scrapeViaSitemap(cfg, term) : scrapeStore(cfg, term),
 }));
 
 /**

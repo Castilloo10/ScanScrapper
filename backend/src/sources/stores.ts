@@ -2,25 +2,20 @@ import type { StoreConfig } from "./engine.ts";
 
 /**
  * Catálogo declarativo de tiendas. Cada entrada la consume el motor genérico
- * (engine.ts): JSON-LD → microdata → selectores CSS.
+ * (engine.ts: JSON-LD → microdata → selectores CSS) o el crawler de sitemap
+ * (sitemap.ts) si tiene `sitemapUrl`.
  *
- * Estado (según recon 2026-07-13 contra las webs reales):
- *  - PCComponentes: JSON-LD en resultados. Ancla del proyecto.
- *  - Alternate.es:  selectores CSS verificados; robots permite /listing.xhtml.
- *  - VS Gamers:     página de búsqueda SSR; robots totalmente abierto.
- *
- * Pendientes (necesitan rastreo por SITEMAP porque su robots.txt prohíbe la
- * búsqueda) → se añadirán con el crawler de sitemap:
- *  - MediaMarkt.es (JSON-LD verificado, ClaudeBot permitido)
- *  - Dynos.es       (JSON-LD, catálogo vivo)
- *  - Neobyte.es     (PrestaShop, JSON-LD en ficha)
+ * Verificado contra las webs reales (recon 2026-07-13). Para las tiendas cuyo
+ * Cloudflare bloquea el fetch nativo de Node se usa `fetch:{curl:true}`.
  */
 export const STORE_CONFIGS: StoreConfig[] = [
+  // ---------- Búsqueda directa (rápidas) ----------
   {
     name: "PCComponentes",
     origin: "https://www.pccomponentes.com",
     searchUrl: (t) =>
       `https://www.pccomponentes.com/search/?query=${encodeURIComponent(t)}`,
+    fetch: { curl: true }, // su Cloudflare bloquea el fetch de Node; curl pasa
   },
   {
     name: "Alternate",
@@ -36,7 +31,53 @@ export const STORE_CONFIGS: StoreConfig[] = [
       outOfStockText: "agotado",
     },
   },
-  // VS Gamers NO va aquí: su /search HTML es un SPA que ignora la query y
-  // devuelve un listado genérico. Su búsqueda real es una API JSON typeahead,
-  // así que vive como fuente a medida en vsgamers.ts.
+  {
+    name: "LDLC",
+    origin: "https://www.ldlc.com",
+    searchUrl: (t) => `https://www.ldlc.com/es-es/buscar/${encodeURIComponent(t)}/`,
+    selectors: {
+      item: ".pdt-item",
+      name: ".title-3",
+      price: ".price",
+      link: "a[href*='/es-es/ficha/']",
+      stock: ".wrap-stock",
+      outOfStockText: "agotado",
+    },
+    fetch: { curl: true },
+  },
+  {
+    name: "PowerPlanet",
+    origin: "https://www.powerplanetonline.com",
+    searchUrl: (t) =>
+      `https://www.powerplanetonline.com/es/search?searchCriteria=${encodeURIComponent(t)}`,
+    selectors: {
+      item: ".product-list-outer",
+      name: ".productListLink",
+      price: ".product-price",
+      link: "a.productListLink",
+    },
+    fetch: { curl: true },
+  },
+
+  // ---------- Por SITEMAP (robots prohíbe la búsqueda; ld+json en ficha) ----------
+  {
+    name: "Dynos",
+    origin: "https://www.dynos.es",
+    sitemapUrl: "https://www.dynos.es/sitemap.xml",
+    maxProducts: 15,
+    fetch: { curl: true },
+  },
+  {
+    name: "Neobyte",
+    origin: "https://www.neobyte.es",
+    sitemapUrl: "https://www.neobyte.es/sitemap_product.xml",
+    maxProducts: 15,
+    fetch: { curl: true },
+  },
+
+  // MediaMarkt: verificado (ld+json Product en ficha vía sitemap) pero su
+  // sitemap son 36+ shards y las fichas pesan ~900KB → demasiado lento para el
+  // rastreo cada 3h. Pendiente de optimizar (p. ej. fetch concurrente acotado).
+  // VS Gamers: su /search es un SPA que ignora la query; su API typeahead es un
+  // autocompletado superficial. Fuente a medida gated en vsgamers.ts.
 ];

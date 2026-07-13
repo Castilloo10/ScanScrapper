@@ -15,14 +15,46 @@ const BROWSER_HEADERS: Record<string, string> = {
   "Upgrade-Insecure-Requests": "1",
 };
 
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+const execFileAsync = promisify(execFile);
+
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_RETRIES = 2;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Descarga con `curl` como plan B. Algunas tiendas con Cloudflare bloquean la
+ * huella TLS del fetch nativo de Node (undici) aunque el User-Agent sea de
+ * navegador; curl usa otra huella y pasa (verificado: PCComponentes, Dynos).
+ * curl está disponible en Windows 10+, macOS y los runners de GitHub Actions.
+ */
+async function curlGet(
+  url: string,
+  headers: Record<string, string>,
+  timeoutMs: number,
+): Promise<string> {
+  const args = ["-sS", "-L", "--compressed", "--max-time", String(Math.ceil(timeoutMs / 1000))];
+  for (const [k, v] of Object.entries(headers)) args.push("-H", `${k}: ${v}`);
+  args.push("-w", "\n%{http_code}", url);
+
+  const { stdout } = await execFileAsync("curl", args, {
+    maxBuffer: 32 * 1024 * 1024,
+    timeout: timeoutMs + 5000,
+  });
+  const nl = stdout.lastIndexOf("\n");
+  const status = Number(stdout.slice(nl + 1).trim());
+  const body = stdout.slice(0, nl);
+  if (status < 200 || status >= 300) throw new Error(`${url} → curl HTTP ${status}`);
+  return body;
+}
 
 export interface FetchOpts {
   headers?: Record<string, string>;
   timeoutMs?: number;
   retries?: number;
+  /** Ir directo a curl (para tiendas que siempre bloquean el fetch de Node). */
+  curl?: boolean;
 }
 
 /**
@@ -69,16 +101,36 @@ async function fetchWithRetry(url: string, opts: FetchOpts = {}): Promise<Respon
 }
 
 export async function getHtml(url: string, opts: FetchOpts = {}): Promise<string> {
-  const res = await fetchWithRetry(url, opts);
-  return res.text();
+  const timeout = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  if (opts.curl) return curlGet(url, { ...BROWSER_HEADERS, ...opts.headers }, timeout);
+  try {
+    const res = await fetchWithRetry(url, opts);
+    return await res.text();
+  } catch (e) {
+    // Plan B: curl (mejor huella TLS contra Cloudflare).
+    try {
+      return await curlGet(url, { ...BROWSER_HEADERS, ...opts.headers }, timeout);
+    } catch {
+      throw e;
+    }
+  }
 }
 
 export async function getJson<T = unknown>(url: string, opts: FetchOpts = {}): Promise<T> {
-  const res = await fetchWithRetry(url, {
-    ...opts,
-    headers: { Accept: "application/json", ...opts.headers },
-  });
-  return res.json() as Promise<T>;
+  const timeout = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const headers = { Accept: "application/json", ...opts.headers };
+  if (opts.curl) return JSON.parse(await curlGet(url, { ...BROWSER_HEADERS, ...headers }, timeout)) as T;
+  try {
+    const res = await fetchWithRetry(url, { ...opts, headers });
+    return (await res.json()) as T;
+  } catch (e) {
+    try {
+      const body = await curlGet(url, { ...BROWSER_HEADERS, ...headers }, timeout);
+      return JSON.parse(body) as T;
+    } catch {
+      throw e;
+    }
+  }
 }
 
 /** Marcas de hardware conocidas (para deducir la marca del título). */
@@ -113,7 +165,9 @@ export const guessBrand = (title: string): string => canonicalBrand(undefined, t
 export function parsePrice(input: string | number | undefined | null): number | null {
   if (typeof input === "number") return Number.isFinite(input) ? input : null;
   if (!input) return null;
-  const text = String(input).replace(/[^\d.,]/g, "");
+  // LDLC y algunos usan el símbolo € como separador decimal: "649€95" = 649,95.
+  const pre = String(input).replace(/(\d)\s*€\s*(\d{2})(?!\d)/, "$1,$2");
+  const text = pre.replace(/[^\d.,]/g, "");
   if (!text) return null;
 
   let normalized: string;
@@ -145,7 +199,15 @@ export function isRelevant(model: string, term: string): boolean {
   const keys = strong.length ? strong : words.filter((w) => w.length >= 4);
   if (keys.length === 0) return true;
   const hay = model.toLowerCase();
-  return keys.some((k) => hay.includes(k));
+  return keys.some((k) => {
+    // Los tokens con dígitos ("5070", "9800x3d") no deben casar como subcadena
+    // de otro número: "5070" NO es relevante dentro de "850700" (un EAN/código).
+    if (/\d/.test(k)) {
+      const esc = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`(?<!\\d)${esc}(?!\\d)`).test(hay);
+    }
+    return hay.includes(k);
+  });
 }
 
 /** ¿La cadena de availability de schema.org indica que hay stock? */

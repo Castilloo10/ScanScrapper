@@ -31,10 +31,21 @@ export interface StoreSelectors {
 
 export interface StoreConfig {
   name: string;
-  /** Construye la URL de búsqueda a partir del término. */
-  searchUrl: (term: string) => string;
   /** Base para resolver URLs relativas. */
   origin: string;
+  /**
+   * Construye la URL de búsqueda a partir del término. Obligatorio salvo que
+   * uses `sitemapUrl` (tiendas cuyo robots.txt prohíbe la búsqueda).
+   */
+  searchUrl?: (term: string) => string;
+  /**
+   * Modo SITEMAP: para tiendas que prohíben la búsqueda por robots pero tienen
+   * ld+json en las fichas. Se enumera el sitemap, se filtran las URLs cuyo slug
+   * casa con el término y se lee el ld+json de cada ficha. Ver sitemap.ts.
+   */
+  sitemapUrl?: string;
+  /** Máx. de fichas a leer por término en modo sitemap (educado). Def. 20. */
+  maxProducts?: number;
   /** Todo el catálogo de la tienda es de 2ª mano (p. ej. marketplaces). */
   usedByDefault?: boolean;
   /** Selectores CSS de respaldo si no hay datos estructurados. */
@@ -73,6 +84,10 @@ function collectProducts(node: unknown, out: any[]): void {
     }
   }
 
+  // Product anidado dentro de otra entidad (p. ej. MediaMarkt: BuyAction.object).
+  if (obj.object) collectProducts(obj.object, out);
+  if (obj.mainEntity) collectProducts(obj.mainEntity, out);
+
   const type = obj["@type"];
   const isProduct = Array.isArray(type)
     ? type.includes("Product")
@@ -96,8 +111,8 @@ function conditionFromSchema(value: string | undefined, used: boolean): Conditio
   return used ? "usado" : "nuevo";
 }
 
-/** Extrae listings de los bloques JSON-LD de una página. */
-function fromJsonLd($: CheerioAPI, cfg: StoreConfig): Listing[] {
+/** Extrae listings de los bloques JSON-LD de una página. Reutilizado por sitemap.ts. */
+export function fromJsonLd($: CheerioAPI, cfg: StoreConfig): Listing[] {
   const products: any[] = [];
   $('script[type="application/ld+json"]').each((_, el) => {
     const raw = $(el).contents().text() || $(el).text();
@@ -182,6 +197,7 @@ function dedupe(listings: Listing[]): Listing[] {
 
 /** Ejecuta una búsqueda genérica para una tienda configurada. */
 export async function scrapeStore(cfg: StoreConfig, term: string): Promise<Listing[]> {
+  if (!cfg.searchUrl) return [];
   const html = await getHtml(cfg.searchUrl(term), cfg.fetch);
   const $ = load(html);
 
