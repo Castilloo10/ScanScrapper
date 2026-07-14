@@ -15,7 +15,7 @@ export const STORE_CONFIGS: StoreConfig[] = [
     origin: "https://www.pccomponentes.com",
     searchUrl: (t) =>
       `https://www.pccomponentes.com/search/?query=${encodeURIComponent(t)}`,
-    fetch: { curl: true }, // su Cloudflare bloquea el fetch de Node; curl pasa
+    fetch: { curl: true, proxied: true }, // Cloudflare bloquea la IP de datacenter de CI (403); enruta por SCRAPER_PROXY si está definido
   },
   {
     name: "Alternate",
@@ -58,6 +58,24 @@ export const STORE_CONFIGS: StoreConfig[] = [
     },
     fetch: { curl: true },
   },
+  {
+    name: "PCBox",
+    origin: "https://www.pcbox.com",
+    searchUrl: (t) => `https://www.pcbox.com/${encodeURIComponent(t)}?map=ft`, // VTEX, ld+json
+    fetch: { curl: true },
+  },
+  {
+    name: "Speedler",
+    origin: "https://www.speedler.es",
+    searchUrl: (t) => `https://www.speedler.es/es/buscar/search:${encodeURIComponent(t)}`,
+    selectors: {
+      item: "div.JS_product.prodGrid2",
+      name: "a.JSproductName",
+      price: "div.price",
+      link: "a.JSproductName",
+    },
+    fetch: { curl: true },
+  },
 
   // ---------- Por SITEMAP (robots prohíbe la búsqueda; ld+json en ficha) ----------
   {
@@ -65,14 +83,14 @@ export const STORE_CONFIGS: StoreConfig[] = [
     origin: "https://www.dynos.es",
     sitemapUrl: "https://www.dynos.es/sitemap.xml",
     maxProducts: 15,
-    fetch: { curl: true },
+    fetch: { curl: true, proxied: true },
   },
   {
     name: "Neobyte",
     origin: "https://www.neobyte.es",
     sitemapUrl: "https://www.neobyte.es/sitemap_product.xml",
     maxProducts: 15,
-    fetch: { curl: true },
+    fetch: { curl: true, proxied: true },
   },
 
   // MediaMarkt: verificado (ld+json Product en ficha vía sitemap) pero su

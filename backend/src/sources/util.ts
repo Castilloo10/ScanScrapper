@@ -29,15 +29,14 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * navegador; curl usa otra huella y pasa (verificado: PCComponentes, Dynos).
  * curl está disponible en Windows 10+, macOS y los runners de GitHub Actions.
  */
-async function curlGet(
-  url: string,
-  headers: Record<string, string>,
-  timeoutMs: number,
-): Promise<string> {
+function curlBaseArgs(timeoutMs: number, proxy?: string): string[] {
   const args = ["-sS", "-L", "--compressed", "--max-time", String(Math.ceil(timeoutMs / 1000))];
-  for (const [k, v] of Object.entries(headers)) args.push("-H", `${k}: ${v}`);
-  args.push("-w", "\n%{http_code}", url);
+  if (proxy) args.push("--proxy", proxy); // proxy de transporte (p. ej. WARP socks5h://...)
+  return args;
+}
 
+async function runCurl(args: string[], url: string, timeoutMs: number): Promise<string> {
+  args.push("-w", "\n%{http_code}", url);
   const { stdout } = await execFileAsync("curl", args, {
     maxBuffer: 32 * 1024 * 1024,
     timeout: timeoutMs + 5000,
@@ -49,12 +48,70 @@ async function curlGet(
   return body;
 }
 
+async function curlGet(
+  url: string,
+  headers: Record<string, string>,
+  timeoutMs: number,
+  proxy?: string,
+): Promise<string> {
+  const args = curlBaseArgs(timeoutMs, proxy);
+  for (const [k, v] of Object.entries(headers)) args.push("-H", `${k}: ${v}`);
+  return runCurl(args, url, timeoutMs);
+}
+
+async function curlPost(
+  url: string,
+  body: string,
+  headers: Record<string, string>,
+  timeoutMs: number,
+  proxy?: string,
+): Promise<string> {
+  const args = curlBaseArgs(timeoutMs, proxy);
+  args.push("-X", "POST", "--data-raw", body);
+  for (const [k, v] of Object.entries(headers)) args.push("-H", `${k}: ${v}`);
+  return runCurl(args, url, timeoutMs);
+}
+
+/**
+ * Resuelve el bypass SOLO para tiendas marcadas `proxied` (las que Cloudflare
+ * bloquea por IP de datacenter en CI). Prioridad: SCRAPER_PROXY (API de scraping,
+ * envuelve la URL) → CURL_PROXY (proxy de transporte, p. ej. WARP). En local sin
+ * ninguna de las dos, rastreo directo y gratis.
+ */
+function resolveProxy(url: string, proxied?: boolean): { target: string; curlProxy?: string } {
+  if (!proxied) return { target: url };
+  if (process.env.SCRAPER_PROXY) return { target: proxify(url) };
+  if (process.env.CURL_PROXY) return { target: url, curlProxy: process.env.CURL_PROXY };
+  return { target: url };
+}
+
 export interface FetchOpts {
   headers?: Record<string, string>;
   timeoutMs?: number;
   retries?: number;
   /** Ir directo a curl (para tiendas que siempre bloquean el fetch de Node). */
   curl?: boolean;
+  /**
+   * Enrutar por un proxy de scraping si está configurado (SCRAPER_PROXY). Para
+   * tiendas cuyo Cloudflare bloquea la IP de datacenter de CI (403). En local
+   * (sin la variable) no cambia nada y se rastrea directo y gratis.
+   */
+  proxied?: boolean;
+}
+
+/**
+ * Envuelve la URL con el proxy de scraping si SCRAPER_PROXY está definido.
+ * Formato de la variable: una plantilla con {url}, p. ej.
+ *   https://api.scrapingant.com/v2/general?url={url}&x-api-key=XXXX
+ *   http://api.scraperapi.com/?api_key=XXXX&url={url}
+ * Si no lleva {url}, la URL se añade al final (URL-encoded).
+ */
+function proxify(url: string): string {
+  const tpl = process.env.SCRAPER_PROXY;
+  if (!tpl) return url;
+  return tpl.includes("{url}")
+    ? tpl.replace("{url}", encodeURIComponent(url))
+    : tpl + encodeURIComponent(url);
 }
 
 /**
@@ -102,7 +159,9 @@ async function fetchWithRetry(url: string, opts: FetchOpts = {}): Promise<Respon
 
 export async function getHtml(url: string, opts: FetchOpts = {}): Promise<string> {
   const timeout = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  if (opts.curl) return curlGet(url, { ...BROWSER_HEADERS, ...opts.headers }, timeout);
+  const { target, curlProxy } = resolveProxy(url, opts.proxied);
+  const viaProxy = target !== url || !!curlProxy;
+  if (opts.curl || viaProxy) return curlGet(target, { ...BROWSER_HEADERS, ...opts.headers }, timeout, curlProxy);
   try {
     const res = await fetchWithRetry(url, opts);
     return await res.text();
@@ -119,7 +178,11 @@ export async function getHtml(url: string, opts: FetchOpts = {}): Promise<string
 export async function getJson<T = unknown>(url: string, opts: FetchOpts = {}): Promise<T> {
   const timeout = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const headers = { Accept: "application/json", ...opts.headers };
-  if (opts.curl) return JSON.parse(await curlGet(url, { ...BROWSER_HEADERS, ...headers }, timeout)) as T;
+  const { target, curlProxy } = resolveProxy(url, opts.proxied);
+  const viaProxy = target !== url || !!curlProxy;
+  if (opts.curl || viaProxy) {
+    return JSON.parse(await curlGet(target, { ...BROWSER_HEADERS, ...headers }, timeout, curlProxy)) as T;
+  }
   try {
     const res = await fetchWithRetry(url, { ...opts, headers });
     return (await res.json()) as T;
@@ -131,6 +194,23 @@ export async function getJson<T = unknown>(url: string, opts: FetchOpts = {}): P
       throw e;
     }
   }
+}
+
+/** POST con cuerpo JSON (para APIs de tienda que solo responden a POST, p. ej. GAME). */
+export async function postJson<T = unknown>(
+  url: string,
+  body: unknown,
+  opts: FetchOpts = {},
+): Promise<T> {
+  const headers = {
+    "Content-Type": "application/json; charset=utf-8",
+    Accept: "application/json",
+    ...opts.headers,
+  };
+  const payload = typeof body === "string" ? body : JSON.stringify(body);
+  const { curlProxy } = resolveProxy(url, opts.proxied);
+  const out = await curlPost(url, payload, { ...BROWSER_HEADERS, ...headers }, opts.timeoutMs ?? DEFAULT_TIMEOUT_MS, curlProxy);
+  return JSON.parse(out) as T;
 }
 
 /** Marcas de hardware conocidas (para deducir la marca del título). */

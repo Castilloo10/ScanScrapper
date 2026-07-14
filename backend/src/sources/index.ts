@@ -2,6 +2,8 @@ import type { Listing } from "../types.ts";
 import { scrapeStore } from "./engine.ts";
 import { scrapeViaSitemap } from "./sitemap.ts";
 import { STORE_CONFIGS } from "./stores.ts";
+import * as coolmod from "./coolmod.ts";
+import * as game from "./game.ts";
 import * as vsgamers from "./vsgamers.ts";
 import * as wallapop from "./wallapop.ts";
 
@@ -32,7 +34,10 @@ const configured: Source[] = STORE_CONFIGS.map((cfg) => ({
  *   ToS y frágil.
  * - Amazon: requiere la Product Advertising API (cuenta de afiliado); omitido.
  */
-const custom: Source[] = [];
+const custom: Source[] = [
+  { name: coolmod.NAME, search: coolmod.search }, // API pública Doofinder
+  { name: game.NAME, search: game.search },       // API POST
+];
 if (process.env.RADAR_ENABLE_VSGAMERS === "1") {
   custom.push({ name: vsgamers.NAME, search: vsgamers.search });
 }

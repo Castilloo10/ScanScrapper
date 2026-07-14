@@ -93,6 +93,47 @@ máquina propia (o un VPS gratis como Oracle Always Free) y subir el
 `products.json`, o usar el **modo API** apuntando `VITE_DATA_URL` a un snapshot
 alojado aparte. Ver [backend/README.md](backend/README.md).
 
+## Desbloquear las tiendas que dan 403 en la nube (opcional, gratis)
+
+Algunas tiendas (PCComponentes, Dynos, Neobyte) devuelven **403 por reputación
+de IP de datacenter**: el mismo rastreo funciona desde una IP residencial pero
+no desde los runners de GitHub. En el código van marcadas `proxied: true`
+([backend/src/sources/stores.ts](backend/src/sources/stores.ts)); en local se
+rastrean directas y gratis, y en la nube puedes darles una IP limpia con una de
+estas opciones (elige UNA):
+
+**Opción 1 · API de scraping con free tier (fiable).**
+[ScrapingAnt](https://scrapingant.com) da 10.000 créditos/mes gratis sin tarjeta.
+Regístrate, copia tu API key y añade en el repo un **secreto** (Settings →
+Secrets and variables → Actions → *Secrets*) llamado `SCRAPER_PROXY` con:
+```
+https://api.scrapingant.com/v2/general?url={url}&x-api-key=TU_KEY&browser=false&proxy_type=residential&proxy_country=ES
+```
+El `{url}` lo rellena el backend. Da para ~1-2 pasadas al día de esas 3 tiendas
+(reduce la frecuencia del cron a cada 12 h para no agotar créditos). Alternativas
+con free tier: Scrape.do (1.000/mes), ScraperAPI (1.000/mes).
+
+**Opción 2 · Cloudflare WARP (sin registro, IP de Cloudflare).**
+Pon la **variable** de repo (Settings → … → *Variables*) `USE_WARP` = `true`.
+El workflow instala WARP y enruta esas 3 tiendas por una IP de Cloudflare (no
+datacenter). Gratis y sin cuenta, pero la fiabilidad varía por tienda (algunas
+también bloquean rangos WARP). Pruébalo: si no mejora, usa la Opción 1.
+
+**Opción 3 · Rastrear desde tu casa (lo más fiable).**
+Tu IP residencial ya devuelve 200 en las 3. Opciones: (a) tarea programada en tu
+PC que hace `npm run snapshot` + `git push`; (b) un *self-hosted runner* de
+GitHub en tu PC (solo en repos privados por seguridad). Necesita el PC encendido.
+
+## ¿Y Amazon.es?
+
+**No hay una vía fiable y gratis.** La API oficial (PA-API 5.0) se apagó en mayo
+2026; su sustituta (Creators API) exige ser afiliado con **10 ventas/mes**,
+inviable para un hobby. El scraping directo de Amazon da captcha/503 (peor aún
+desde datacenter) y su HTML no trae `ld+json` de precio fiable. Las opciones con
+datos buenos son de pago: **Keepa** (49 €/mes, incluye histórico), **ScraperAPI**
+(~19 $/mes). Free tier de verdad: **Canopy** (100 peticiones/mes). Recomendación:
+dejar Amazon fuera salvo que asumas un coste mensual.
+
 ## Alternativa: Cloudflare Pages
 
 Cloudflare Pages también es gratis y sirve en `/` (sin subruta):
