@@ -96,6 +96,10 @@ jobs:
         working-directory: frontend
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          # Si defines la variable de repo API_URL (tu backend de Render), la web
+          # usa BÚSQUEDA EN VIVO (cualquier producto). Sin ella, modo estático
+          # (snapshot products.json). Ver DEPLOY.md.
+          VITE_API_URL: ${{ vars.API_URL }}
 
       # 5) Publica en GitHub Pages.
       - uses: actions/configure-pages@v5

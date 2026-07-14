@@ -1,0 +1,22 @@
+# Blueprint de Render para el backend de búsqueda en vivo (plan gratis).
+# Conecta este repo en https://render.com → New → Blueprint, y Render lee esto.
+# Te dará una URL tipo https://scanscrapper-api.onrender.com
+# Ponla luego como variable de repo API_URL en GitHub (ver DEPLOY.md).
+services:
+  - type: web
+    name: scanscrapper-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      # Opcional: acota el CORS a tu web (si no, queda abierto).
+      # - key: ALLOWED_ORIGIN
+      #   value: https://TU_USUARIO.github.io
+      # Opcional: bypass Cloudflare para las tiendas `proxied` (ver DEPLOY.md).
+      # - key: SCRAPER_PROXY
+      #   sync: false

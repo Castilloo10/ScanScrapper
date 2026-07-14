@@ -23,7 +23,8 @@ export function Header({ query, onSearch, onToggleFilters, filtersOpen }: Props)
   const handle = (v: string) => {
     setValue(v);
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => onSearch(v.trim()), 300);
+    // 600ms: en modo búsqueda-en-vivo cada término dispara un rastreo real.
+    timer.current = setTimeout(() => onSearch(v.trim()), 600);
   };
 
   return (

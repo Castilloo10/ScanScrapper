@@ -24,7 +24,7 @@ export default function App() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [drawer, setDrawer] = useState(false);
 
-  const { products, facets, updatedAt, loading, error, empty } = useCatalog(filters);
+  const { products, facets, updatedAt, loading, error, empty, awaitingQuery } = useCatalog(filters);
 
   const patch = (p: Partial<Filters>) => setFilters((f) => ({ ...f, ...p }));
   const clear = () => setFilters(DEFAULT_FILTERS);
@@ -106,6 +106,8 @@ export default function App() {
           <div className={styles.grid} aria-busy={loading}>
             {showSkeleton ? (
               <SkeletonGrid count={6} />
+            ) : awaitingQuery ? (
+              <EmptyState variant="search" />
             ) : products.length === 0 ? (
               <EmptyState variant={empty ? "no-data" : "no-match"} />
             ) : (

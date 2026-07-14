@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Filters, Product } from "../types";
 import { filterProducts } from "../lib/filter";
+import { facets as deriveFacets } from "../lib/stores";
 import {
-  MODE, fetchSnapshot, fetchProductsApi, fetchFacetsApi,
+  MODE, fetchSnapshot, fetchQuery,
   type FacetSet, type Snapshot,
 } from "../data";
 
@@ -14,6 +15,8 @@ export interface Catalog {
   error?: string;
   /** true cuando el catálogo cargó pero está vacío (aún no hay datos). */
   empty: boolean;
+  /** modo búsqueda-en-vivo sin término escrito todavía → pide buscar. */
+  awaitingQuery: boolean;
   mode: "api" | "static";
 }
 
@@ -54,43 +57,54 @@ function useStaticCatalog(filters: Filters): Catalog {
     loading: !snap && !error,
     error,
     empty: !!snap && snap.products.length === 0,
+    awaitingQuery: false,
     mode: "static",
   };
 }
 
-function useApiCatalog(filters: Filters): Catalog {
-  const [state, setState] = useState<{ products: Product[]; loading: boolean; error?: string }>({
-    products: [], loading: true,
-  });
-  const [facets, setFacets] = useState<FacetSet>(EMPTY_FACETS);
+/**
+ * Búsqueda en vivo: rastrea el término al vuelo cuando cambia (no en cada
+ * filtro) y filtra precio/marca/tienda/orden en cliente sobre lo devuelto.
+ */
+function useLiveCatalog(filters: Filters): Catalog {
+  const [dataset, setDataset] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+  const [searched, setSearched] = useState(false);
+
+  const q = filters.q.trim();
 
   useEffect(() => {
+    if (!q) { setDataset([]); setSearched(false); setError(undefined); setLoading(false); return; }
     const ac = new AbortController();
-    setState((s) => ({ ...s, loading: true }));
-    fetchProductsApi(filters, ac.signal)
-      .then((products) => { if (!ac.signal.aborted) setState({ products, loading: false }); })
+    setLoading(true);
+    setError(undefined);
+    fetchQuery(q, ac.signal)
+      .then((products) => {
+        if (ac.signal.aborted) return;
+        setDataset(products); setSearched(true); setLoading(false);
+      })
       .catch((e) => {
         if (ac.signal.aborted || (e as Error).name === "AbortError") return;
-        setState({ products: [], loading: false, error: (e as Error).message });
+        setDataset([]); setError((e as Error).message); setLoading(false);
       });
     return () => ac.abort();
-  }, [filters]);
+  }, [q]);
 
-  useEffect(() => {
-    const ac = new AbortController();
-    fetchFacetsApi(ac.signal)
-      .then((f) => { if (!ac.signal.aborted) setFacets(f); })
-      .catch(() => { /* facetas son opcionales para pintar filtros */ });
-    return () => ac.abort();
-  }, []);
+  const products = useMemo(() => filterProducts(dataset, filters), [dataset, filters]);
+  const facets = useMemo<FacetSet>(() => {
+    const f = deriveFacets(dataset);
+    return { brands: f.brands, stores: f.stores };
+  }, [dataset]);
 
   return {
-    products: state.products,
+    products,
     facets,
     updatedAt: null,
-    loading: state.loading,
-    error: state.error,
-    empty: !state.loading && !state.error && state.products.length === 0,
+    loading,
+    error,
+    empty: searched && dataset.length === 0 && !loading && !error,
+    awaitingQuery: !q && !loading,
     mode: "api",
   };
 }
@@ -100,4 +114,4 @@ function useApiCatalog(filters: Filters): Catalog {
  * hook por modo mantiene un orden de hooks estable entre renders.
  */
 export const useCatalog =
-  MODE === "static" ? useStaticCatalog : useApiCatalog;
+  MODE === "static" ? useStaticCatalog : useLiveCatalog;

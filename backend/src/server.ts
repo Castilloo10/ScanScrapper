@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
-import { search, facets } from "./db.ts";
+import { facets } from "./db.ts";
+import { liveSearch } from "./live.ts";
 import { PORT } from "./config.ts";
 import type { Condition, SearchQuery, SortKey } from "./types.ts";
 
@@ -31,7 +32,7 @@ function numParam(raw: string | undefined): { value?: number; error?: string } {
  *              &min=600&max=900&cond=nuevo&stock=1&sort=price-asc&limit=200
  * Devuelve el mismo shape que consume el frontend (array de ProductResult).
  */
-app.get("/search", (c) => {
+app.get("/search", async (c) => {
   const p = c.req.query();
   const list = (key: string) => c.req.queries(key) ?? [];
 
@@ -66,7 +67,9 @@ app.get("/search", (c) => {
     offset: offset.value,
   };
 
-  return c.json(search(q));
+  // Búsqueda EN VIVO: rastrea el término en las tiendas al vuelo (con caché).
+  const result = await liveSearch(q);
+  return c.json(result.products);
 });
 
 /** Vocabulario real de filtros (marcas/tiendas con recuentos) desde la BD. */

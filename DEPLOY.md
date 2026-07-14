@@ -93,6 +93,32 @@ máquina propia (o un VPS gratis como Oracle Always Free) y subir el
 `products.json`, o usar el **modo API** apuntando `VITE_DATA_URL` a un snapshot
 alojado aparte. Ver [backend/README.md](backend/README.md).
 
+## Búsqueda EN VIVO — cualquier producto (opcional, gratis)
+
+Por defecto la web es un **snapshot estático** de unos pocos productos vigilados.
+Si quieres que la caja de búsqueda encuentre **cualquier producto** (escribes
+«RTX 4080», «SSD 2TB», «placa base B650»… y busca en todas las tiendas al
+momento), despliega el backend en **Render** (plan gratis) y conéctalo:
+
+1. Entra en [render.com](https://render.com) (gratis), **New → Blueprint**, y
+   selecciona este repositorio. Render lee [render.yaml](render.yaml) y crea el
+   servicio. Te da una URL, p. ej. `https://scanscrapper-api.onrender.com`.
+2. En GitHub: Settings → Secrets and variables → Actions → **Variables** → añade
+   `API_URL` con esa URL.
+3. Relanza el deploy (Actions → deploy → Run workflow). La web pasa a **modo
+   búsqueda en vivo**.
+
+Cómo funciona: al escribir un término, el frontend llama a tu backend, que
+rastrea las tiendas rápidas al vuelo (con caché de 10 min por consulta) y
+devuelve los precios. El resto de filtros (precio, marca, tienda) se aplican al
+instante en el navegador.
+
+> **Nota del plan gratis de Render:** el servicio se **duerme tras 15 min** sin
+> uso; la primera búsqueda después lo despierta (~40-50 s). Las siguientes van
+> rápidas. La búsqueda en vivo usa solo las tiendas rápidas (no las de sitemap,
+> que son lentas), y desde la IP de Render las 3 tiendas `proxied` seguirán
+> dando 403 salvo que configures `SCRAPER_PROXY` también en Render.
+
 ## Desbloquear las tiendas que dan 403 en la nube (opcional, gratis)
 
 Algunas tiendas (PCComponentes, Dynos, Neobyte) devuelven **403 por reputación

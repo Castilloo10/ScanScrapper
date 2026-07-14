@@ -1,4 +1,4 @@
-import type { Condition, Filters, Product } from "./types";
+import type { Condition, Product } from "./types";
 import type { Facet } from "./lib/stores";
 import { facets as deriveFacets } from "./lib/stores";
 
@@ -65,19 +65,6 @@ function parseProducts(json: unknown): Product[] {
   return json.map(normalizeProduct).filter((p): p is Product => p !== null);
 }
 
-function toParams(f: Filters): string {
-  const p = new URLSearchParams();
-  if (f.q) p.set("q", f.q);
-  if (f.priceMin != null) p.set("min", String(f.priceMin));
-  if (f.priceMax != null) p.set("max", String(f.priceMax));
-  if (f.cond !== "todos") p.set("cond", f.cond);
-  if (f.stockOnly) p.set("stock", "1");
-  p.set("sort", f.sort);
-  f.brands.forEach((b) => p.append("brand", b));
-  f.stores.forEach((s) => p.append("store", s));
-  return p.toString();
-}
-
 // ---- Modo estático ----
 
 /** Carga el snapshot completo (products.json). Lanza si no está disponible. */
@@ -96,20 +83,15 @@ export async function fetchSnapshot(signal?: AbortSignal): Promise<Snapshot> {
   return { updatedAt, products, facets };
 }
 
-// ---- Modo API en vivo ----
+// ---- Modo API en vivo (búsqueda en directo) ----
 
-export async function fetchProductsApi(f: Filters, signal?: AbortSignal): Promise<Product[]> {
-  const res = await fetch(`${API}/search?${toParams(f)}`, { signal });
+/**
+ * Rastrea el término en las tiendas al vuelo y devuelve TODOS los productos que
+ * coinciden. El resto de filtros (precio, marca, tienda, orden) se aplican en
+ * cliente, así que solo se llama cuando cambia el TÉRMINO (no en cada filtro).
+ */
+export async function fetchQuery(q: string, signal?: AbortSignal): Promise<Product[]> {
+  const res = await fetch(`${API}/search?q=${encodeURIComponent(q)}&limit=1000`, { signal });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return parseProducts(await res.json());
-}
-
-export async function fetchFacetsApi(signal?: AbortSignal): Promise<FacetSet> {
-  const res = await fetch(`${API}/facets`, { signal });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = (await res.json()) as { brands?: Facet[]; stores?: Facet[] };
-  return {
-    brands: Array.isArray(json.brands) ? json.brands : [],
-    stores: Array.isArray(json.stores) ? json.stores : [],
-  };
 }

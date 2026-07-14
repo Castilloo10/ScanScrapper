@@ -14,13 +14,17 @@ export interface Source {
 
 /**
  * Las tiendas "normales" salen de la config declarativa (stores.ts) a través
- * del motor genérico. Para añadir una tienda, edita stores.ts — no hace falta
- * un fichero nuevo.
+ * del motor genérico. Las de búsqueda directa son RÁPIDAS (aptas para búsqueda
+ * en vivo); las de sitemap son LENTAS (crawl del sitemap) → solo para el
+ * snapshot programado, no para consultas en vivo.
  */
-const configured: Source[] = STORE_CONFIGS.map((cfg) => ({
+const fastConfigured: Source[] = STORE_CONFIGS.filter((c) => !c.sitemapUrl).map((cfg) => ({
   name: cfg.name,
-  search: (term: string) =>
-    cfg.sitemapUrl ? scrapeViaSitemap(cfg, term) : scrapeStore(cfg, term),
+  search: (term: string) => scrapeStore(cfg, term),
+}));
+const sitemapConfigured: Source[] = STORE_CONFIGS.filter((c) => c.sitemapUrl).map((cfg) => ({
+  name: cfg.name,
+  search: (term: string) => scrapeViaSitemap(cfg, term),
 }));
 
 /**
@@ -45,4 +49,8 @@ if (process.env.RADAR_ENABLE_WALLAPOP === "1") {
   custom.push({ name: wallapop.NAME, search: wallapop.search });
 }
 
-export const SOURCES: Source[] = [...configured, ...custom];
+/** Todas las fuentes (para el snapshot programado / rastreo completo). */
+export const SOURCES: Source[] = [...fastConfigured, ...sitemapConfigured, ...custom];
+
+/** Fuentes rápidas para la BÚSQUEDA EN VIVO (excluye las lentas de sitemap). */
+export const LIVE_SOURCES: Source[] = [...fastConfigured, ...custom];
