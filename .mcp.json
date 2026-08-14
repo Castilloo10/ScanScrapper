@@ -5,6 +5,15 @@
       "args": [
         "-y",
         "@nanonets/graft",
+        "mcp",
+        "E:/Descargas/BTAL APP/btal-v2"
+      ]
+    },
+    "graft-radar": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@nanonets/graft",
         "mcp"
       ]
     }
