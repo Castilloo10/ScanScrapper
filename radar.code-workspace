@@ -16,7 +16,13 @@
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "files.eol": "\n",
-    "typescript.tsdk": "frontend/node_modules/typescript/lib"
+    "typescript.tsdk": "frontend/node_modules/typescript/lib",
+    // Aquí no hay proyectos Java que se desarrollen desde el editor (radar es TypeScript y BTal es Expo: su android/
+    // lo genera `expo prebuild` y se compila con gradlew o EAS). Sin esto, las extensiones de Java cargaban Gradle
+    // al abrir y fallaban con módulos sueltos de node_modules (expo-network/android), que solo compilan dentro de la app.
+    "gradle.autoDetect": "off",
+    "java.import.gradle.enabled": false,
+    "java.gradle.buildServer.enabled": "off"
   },
   "extensions": {
     "recommendations": [
