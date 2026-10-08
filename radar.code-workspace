@@ -2,15 +2,15 @@
   "folders": [
     {
       "name": "🛰  frontend",
-      "path": "frontend"
+      "path": "frontend",
     },
     {
       "name": "⚙  backend",
-      "path": "backend"
+      "path": "backend",
     },
     {
-      "path": "../BTAL APP/btal-v2"
-    }
+      "path": "../BTAL APP/btal-v2",
+    },
   ],
   "settings": {
     "editor.formatOnSave": true,
@@ -22,13 +22,14 @@
     // al abrir y fallaban con módulos sueltos de node_modules (expo-network/android), que solo compilan dentro de la app.
     "gradle.autoDetect": "off",
     "java.import.gradle.enabled": false,
-    "java.gradle.buildServer.enabled": "off"
+    "java.gradle.buildServer.enabled": "off",
+    "java.configuration.updateBuildConfiguration": "interactive",
   },
   "extensions": {
     "recommendations": [
       "oven.bun-vscode",
       "esbenp.prettier-vscode",
-      "dbaeumer.vscode-eslint"
-    ]
-  }
+      "dbaeumer.vscode-eslint",
+    ],
+  },
 }
